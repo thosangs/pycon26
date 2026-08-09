@@ -252,8 +252,8 @@
 
   <!-- ===================== SLIDE 4c — the fix ===================== -->
   <section>
-    <span class="kicker">the fix — one model: int_sessions</span>
-    <h2>Four changes, all on <span style="color:var(--crit)">the model that mattered</span>.</h2>
+    <span class="kicker">the fix — the small models on the critical path</span>
+    <h2>Four changes, on <span style="color:var(--crit)">the models that mattered</span>.</h2>
     <div class="cols" style="margin-top:1.3rem; flex-wrap:wrap; gap:1.3rem;">
       <div class="card" style="width:280px; text-align:center;">
         <div style="font-size:1.9em">📆</div>
@@ -276,20 +276,20 @@
         <div class="muted" style="font-size:.48em; margin-top:.35rem">select only the columns truly used downstream</div>
       </div>
     </div>
-    <p style="font-size:.58em; margin-top:1.4rem;">Nothing exotic — <em>read less, compute less</em>, on the one model everything waits on.</p>
+    <p style="font-size:.58em; margin-top:1.4rem;">Nothing exotic — <em>read less, compute less</em>, on the models everything waits on.</p>
   </section>
 
   <!-- ===================== SLIDE 4b — the payoff ===================== -->
   <section data-auto-animate>
     <span class="kicker">the payoff</span>
-    <h2>Optimized <em>one</em> upstream model.</h2>
+    <h2>Optimized a few <em>small</em> upstream models.</h2>
     <div class="cols" style="margin-top:1rem;">
       <div><div class="muted" style="font-size:.5em;">BEFORE</div><div class="huge crit">60<span style="font-size:.35em">min</span></div></div>
       <div class="arrowbig">➜</div>
       <div><div class="muted" style="font-size:.5em;">AFTER</div><div class="huge ok">30<span style="font-size:.35em">min</span></div></div>
     </div>
     <h2 style="margin-top:1.4rem; color:var(--ok)">−50% total runtime</h2>
-    <p class="muted" style="font-size:.55em;">One model. Because of <em>where it sat in the graph</em>.</p>
+    <p class="muted" style="font-size:.55em;">Not the big model — the small ones <em>on the critical path</em>.</p>
   </section>
 
   <!-- ===================== SLIDE 5 — TAKEAWAYS ===================== -->
