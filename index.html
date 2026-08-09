@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>The Real Bottleneck — dbt + Python</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme">
+
+  <style>
+    :root{
+      --dbt:#FF694A;
+      --py-blue:#3776AB;
+      --py-yellow:#FFD43B;
+      --bq:#4285F4;
+      --nx:#2ECC71;
+      --ink:#e9edf2;
+      --muted:#8b97a7;
+      --bg:#0d1117;
+      --panel:#161b22;
+      --crit:#FF4D4D;
+      --ok:#2ECC71;
+    }
+
+    .reveal { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .reveal .slides section { text-align: center; }
+    .reveal h1,.reveal h2,.reveal h3{ font-weight:800; letter-spacing:-.02em; text-transform:none; }
+    .reveal h1{ font-size:2.4em; line-height:1.05; }
+    .reveal h2{ font-size:1.7em; }
+    .reveal .muted{ color:var(--muted); }
+    .reveal .accent{ color:var(--dbt); }
+    .reveal em{ color:var(--py-yellow); font-style:normal; font-weight:700; }
+
+    .kicker{
+      display:inline-block; font-size:.42em; letter-spacing:.28em;
+      text-transform:uppercase; color:var(--muted); margin-bottom:.6em;
+    }
+
+    /* ---- stack logos row ---- */
+    .stack{ display:flex; gap:3rem; justify-content:center; align-items:flex-end; margin-top:1.6rem; flex-wrap:wrap; }
+    .chip{ display:flex; flex-direction:column; align-items:center; gap:.6rem; }
+    .chip img{ height:82px; width:auto; object-fit:contain; }
+    .chip span{ font-size:.36em; color:var(--muted); letter-spacing:.06em; }
+
+    /* ---- big number ---- */
+    .huge{ font-size:4.6em; font-weight:900; line-height:1; }
+    .huge.crit{ color:var(--crit); }
+    .huge.ok{ color:var(--ok); }
+
+    /* ---- bar chart (problem slide) ---- */
+    .bars{ display:flex; gap:1.1rem; justify-content:center; align-items:flex-end; height:340px; margin-top:1rem; }
+    .bar{ width:74px; border-radius:8px 8px 0 0; position:relative; background:#30363d;
+          display:flex; align-items:flex-start; justify-content:center; transition:all .5s; }
+    .bar b{ position:absolute; top:-1.6em; font-size:.42em; color:var(--ink); }
+    .bar i{ position:absolute; bottom:-1.9em; font-size:.32em; color:var(--muted); font-style:normal; white-space:nowrap; }
+    .bar.hot{ background:linear-gradient(180deg,#ff8a70,var(--dbt)); }
+
+    /* ---- generic two-col ---- */
+    .cols{ display:flex; gap:3rem; justify-content:center; align-items:center; }
+    .card{ background:var(--panel); border:1px solid #232a33; border-radius:16px; padding:1.4rem 1.6rem; }
+    .card .lbl{ font-size:.4em; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+
+    .arrowbig{ font-size:2.4em; color:var(--muted); }
+
+    ul.clean{ list-style:none; margin:0; padding:0; text-align:left; display:inline-block; }
+    ul.clean li{ margin:.55em 0; font-size:.82em; }
+    ul.clean li::before{ content:"→"; color:var(--dbt); font-weight:800; margin-right:.6em; }
+
+    .footnote{ position:fixed; bottom:14px; left:0; right:0; font-size:14px; color:#3d4653; }
+
+    code.k{ background:#20262e; color:var(--py-yellow); padding:.1em .45em; border-radius:6px; font-size:.85em; }
+
+    /* DAG edges */
+    .edge{ stroke:#3a434f; stroke-width:4; fill:none; }
+    .edge.crit{ stroke:var(--crit); stroke-width:6; }
+    .node rect{ fill:var(--panel); stroke:#3a434f; stroke-width:2.5; }
+    .node.crit rect{ stroke:var(--crit); stroke-width:4; }
+    .node.fix rect{ stroke:var(--ok); stroke-width:4; }
+    .node text.n{ fill:var(--ink); font-size:15px; font-weight:700; }
+    .node text.t{ fill:var(--muted); font-size:13px; }
+    .node.fix text.t{ fill:var(--ok); }
+  </style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+  <!-- ===================== SLIDE 1 — BACKGROUND ===================== -->
+  <section data-auto-animate>
+    <span class="kicker">PyCon · lightning talk</span>
+    <h1>The <span class="accent">Real</span> Bottleneck<br>in Your dbt Pipeline</h1>
+    <p class="muted" style="font-size:.6em; margin-top:.6em;">The slowest model is (probably) not the problem.</p>
+
+    <div class="stack">
+      <div class="chip"><img src="data:image/svg+xml;base64,PHN2ZyByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+ZGJ0PC90aXRsZT48cGF0aCBmaWxsPSIjRkY2OTRBIiBkPSJNMTcuOTAwNCA5LjM3NjNhOC4xNDg4IDguMTQ4OCAwIDAgMC0zLjA0MjEtMy4xMjA2bDEuNzcwOC44Mzg1YTEwLjI4NzQgMTAuMjg3NCAwIDAgMSAzLjc0IDMuMDAwN2wzLjIzNC01LjkyOTVhMi44NTQ2IDIuODU0NiAwIDAgMC0uMDYxMS0yLjk2MDRDMjIuNzU2Ni4wMzcxIDIxLjIxMTItLjM0MDkgMTkuOTc1NC4zMzI3bC01Ljg3NDkgMy4yMTAxYTQuMzYxMiA0LjM2MTIgMCAwIDEtNC4xNzYxIDBMNC4xNzY5LjQwOGEyLjg1NDUgMi44NTQ1IDAgMCAwLTIuOTU5Mi4wNjMyYy0xLjE2NzMuNzg1My0xLjU0NTIgMi4zMy0uODcyMyAzLjU2NTVMMy41NSA5LjkxMDZhNC4zNjEyIDQuMzYxMiAwIDAgMSAwIDQuMTc3MmwtMy4xMjcyIDUuNzQzYTIuODYgMi44NiAwIDAgMCAuMDg1IDIuOTk3NGMuNzk0IDEuMTQzOCAyLjMyMjUgMS41MDU0IDMuNTQ0OC44Mzg1bDYuMDU4MS0zLjMwNDlhMTAuMjg3NyAxMC4yODc3IDAgMCAxLTMuMDA1MS0zLjc0NTRsLS44Mzc0LTEuNzcwOGE4LjE0OCA4LjE0OCAwIDAgMCAzLjEyMDYgMy4wNDIxbDEwLjU4MzIgNS43NzljMS4yMjEzLjY2NiAyLjc0ODEuMzA1NSAzLjU0MjYtLjgzNjNhMi44Njk5IDIuODY5OSAwIDAgMCAuMDc5Ni0zLjAwMThMMTcuOTAwNCA5LjM3NjN6bTMuMzgwMS03LjczNTFjLjYwMjIgMCAxLjA5MDQuNDg4MiAxLjA5MDQgMS4wOTA0cy0uNDg4MiAxLjA5MDQtMS4wOTA0IDEuMDkwNC0xLjA5MDQtLjQ4ODItMS4wOTA0LTEuMDkwNC40ODgyLTEuMDkwNCAxLjA5MDQtMS4wOTA0ek0yLjc0NDIgMy44MjJjLS42MDIyIDAtMS4wOTA0LS40ODgyLTEuMDkwNC0xLjA5MDRzLjQ4ODItMS4wOTA0IDEuMDkwNC0xLjA5MDQgMS4wOTA0LjQ4ODIgMS4wOTA0IDEuMDkwNFMzLjM0NjQgMy44MjIgMi43NDQyIDMuODIyem0wIDE4LjUzNjNjLS42MDIyIDAtMS4wOTA0LS40ODgyLTEuMDkwNC0xLjA5MDQgMC0uNjAyMi40ODgyLTEuMDkwNCAxLjA5MDQtMS4wOTA0czEuMDkwNC40ODgyIDEuMDkwNCAxLjA5MDRjMCAuNjAyMi0uNDg4MiAxLjA5MDQtMS4wOTA0IDEuMDkwNHptMTAuMzU4NS0xMS40NDg5Yy0xLjIwMDgtLjAwMzUtMi4xNzcuOTY3Mi0yLjE4MDUgMi4xNjc5YTIuMTczOCAyLjE3MzggMCAwIDAgLjcwNTIgMS42MDkxYy0xLjQ4NzItLjIwOTEtMi41MjM0LTEuNTg0My0yLjMxNDItMy4wNzE2LjIwOTEtMS40ODcyIDEuNTg0My0yLjUyMzQgMy4wNzE2LTIuMzE0MmEyLjcxOTQgMi43MTk0IDAgMCAxIDIuMzE0MiAyLjMxNDIgMi4xNjIzIDIuMTYyMyAwIDAgMC0xLjU5NjMtLjcwNTR6bTguMTc3OCAxMS40NDg5Yy0uNjAyMiAwLTEuMDkwNC0uNDg4Mi0xLjA5MDQtMS4wOTA0IDAtLjYwMjIuNDg4Mi0xLjA5MDQgMS4wOTA0LTEuMDkwNHMxLjA5MDQuNDg4MiAxLjA5MDQgMS4wOTA0YzAgLjYwMjItLjQ4ODIgMS4wOTA0LTEuMDkwNCAxLjA5MDR6Ii8+PC9zdmc+" alt="dbt"><span>dbt</span></div>
+      <div class="chip"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48bGluZWFyR3JhZGllbnQgaWQ9InB5dGhvbi1vcmlnaW5hbC1hIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjcwLjI1MiIgeTE9IjEyMzcuNDc2IiB4Mj0iMTcwLjY1OSIgeTI9IjExNTEuMDg5IiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KC41NjMgMCAwIC0uNTY4IC0yOS4yMTUgNzA3LjgxNykiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzVBOUZENCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzMwNjk5OCIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJweXRob24tb3JpZ2luYWwtYiIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIHgxPSIyMDkuNDc0IiB5MT0iMTA5OC44MTEiIHgyPSIxNzMuNjIiIHkyPSIxMTQ5LjUzNyIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCguNTYzIDAgMCAtLjU2OCAtMjkuMjE1IDcwNy44MTcpIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNGRkQ0M0IiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNGRkU4NzMiLz48L2xpbmVhckdyYWRpZW50PjxwYXRoIGZpbGw9InVybCgjcHl0aG9uLW9yaWdpbmFsLWEpIiBkPSJNNjMuMzkxIDEuOTg4Yy00LjIyMi4wMi04LjI1Mi4zNzktMTEuOCAxLjAwNy0xMC40NSAxLjg0Ni0xMi4zNDYgNS43MS0xMi4zNDYgMTIuODM3djkuNDExaDI0LjY5M3YzLjEzN0gyOS45NzdjLTcuMTc2IDAtMTMuNDYgNC4zMTMtMTUuNDI2IDEyLjUyMS0yLjI2OCA5LjQwNS0yLjM2OCAxNS4yNzUgMCAyNS4wOTYgMS43NTUgNy4zMTEgNS45NDcgMTIuNTE5IDEzLjEyNCAxMi41MTloOC40OTFWNjcuMjM0YzAtOC4xNTEgNy4wNTEtMTUuMzQgMTUuNDI2LTE1LjM0aDI0LjY2NWM2Ljg2NiAwIDEyLjM0Ni01LjY1NCAxMi4zNDYtMTIuNTQ4VjE1LjgzM2MwLTYuNjkzLTUuNjQ2LTExLjcyLTEyLjM0Ni0xMi44MzctNC4yNDQtLjcwNi04LjY0NS0xLjAyNy0xMi44NjYtMS4wMDh6TTUwLjAzNyA5LjU1N2MyLjU1IDAgNC42MzQgMi4xMTcgNC42MzQgNC43MjEgMCAyLjU5My0yLjA4MyA0LjY5LTQuNjM0IDQuNjktMi41NiAwLTQuNjMzLTIuMDk3LTQuNjMzLTQuNjktLjAwMS0yLjYwNCAyLjA3My00LjcyMSA0LjYzMy00LjcyMXoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgMTAuMjYpIi8+PHBhdGggZmlsbD0idXJsKCNweXRob24tb3JpZ2luYWwtYikiIGQ9Ik05MS42ODIgMjguMzh2MTAuOTY2YzAgOC41LTcuMjA4IDE1LjY1NS0xNS40MjYgMTUuNjU1SDUxLjU5MWMtNi43NTYgMC0xMi4zNDYgNS43ODMtMTIuMzQ2IDEyLjU0OXYyMy41MTVjMCA2LjY5MSA1LjgxOCAxMC42MjggMTIuMzQ2IDEyLjU0NyA3LjgxNiAyLjI5NyAxNS4zMTIgMi43MTMgMjQuNjY1IDAgNi4yMTYtMS44MDEgMTIuMzQ2LTUuNDIzIDEyLjM0Ni0xMi41NDd2LTkuNDEySDYzLjkzOHYtMy4xMzhoMzcuMDEyYzcuMTc2IDAgOS44NTItNS4wMDUgMTIuMzQ4LTEyLjUxOSAyLjU3OC03LjczNSAyLjQ2Ny0xNS4xNzQgMC0yNS4wOTYtMS43NzQtNy4xNDUtNS4xNjEtMTIuNTIxLTEyLjM0OC0xMi41MjFoLTkuMjY4ek03Ny44MDkgODcuOTI3YzIuNTYxIDAgNC42MzQgMi4wOTcgNC42MzQgNC42OTIgMCAyLjYwMi0yLjA3NCA0LjcxOS00LjYzNCA0LjcxOS0yLjU1IDAtNC42MzMtMi4xMTctNC42MzMtNC43MTkgMC0yLjU5NSAyLjA4My00LjY5MiA0LjYzMy00LjY5MnoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgMTAuMjYpIi8+PHJhZGlhbEdyYWRpZW50IGlkPSJweXRob24tb3JpZ2luYWwtYyIgY3g9IjE4MjUuNjc4IiBjeT0iNDQ0LjQ1IiByPSIyNi43NDMiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMCAtLjI0IC0xLjA1NSAwIDUzMi45NzkgNTU3LjU3NikiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNCOEI4QjgiIHN0b3Atb3BhY2l0eT0iLjQ5OCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzdGN0Y3RiIgc3RvcC1vcGFjaXR5PSIwIi8+PC9yYWRpYWxHcmFkaWVudD48cGF0aCBvcGFjaXR5PSIuNDQ0IiBmaWxsPSJ1cmwoI3B5dGhvbi1vcmlnaW5hbC1jKSIgZD0iTTk3LjMwOSAxMTkuNTk3YzAgMy41NDMtMTQuODE2IDYuNDE2LTMzLjA5MSA2LjQxNi0xOC4yNzYgMC0zMy4wOTItMi44NzMtMzMuMDkyLTYuNDE2IDAtMy41NDQgMTQuODE1LTYuNDE3IDMzLjA5Mi02LjQxNyAxOC4yNzUgMCAzMy4wOTEgMi44NzIgMzMuMDkxIDYuNDE3eiIvPjwvc3ZnPgo=" alt="Python"><span>Python</span></div>
+      <div class="chip"><img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiM1QjhERUYiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj4KICAgIDxlbGxpcHNlIGN4PSI1MCIgY3k9IjI0IiByeD0iMzAiIHJ5PSIxMiIvPgogICAgPHBhdGggZD0iTTIwIDI0IFY3NiBhMzAgMTIgMCAwIDAgNjAgMCBWMjQiLz4KICAgIDxwYXRoIGQ9Ik0yMCA0MiBhMzAgMTIgMCAwIDAgNjAgMCIvPgogICAgPHBhdGggZD0iTTIwIDU5IGEzMCAxMiAwIDAgMCA2MCAwIi8+CiAgPC9nPgo8L3N2Zz4K" alt="Data"><span>Data</span></div>
+    </div>
+  </section>
+
+  <!-- ===================== SLIDE 1b — BACKGROUND ===================== -->
+  <section>
+    <span class="kicker">background</span>
+    <h2>Every night, the <span class="accent">whole pipeline</span> runs.</h2>
+    <div class="cols" style="margin-top:1.6rem;">
+      <div class="card"><div style="font-size:2.4em; line-height:1">🌙</div><div class="lbl" style="margin-top:.4rem">nightly, on schedule</div></div>
+      <div class="card"><div style="font-size:1.8em; font-weight:900">100s</div><div class="lbl">of models</div></div>
+      <div class="card" style="border-color:var(--dbt)"><div class="accent" style="font-size:1.8em; font-weight:900">~60 min</div><div class="lbl">and creeping up</div></div>
+    </div>
+    <p style="font-size:.66em; margin-top:1.8rem;">It's big. It's heavy. It's slow. So the <em>natural</em> instinct kicks in:</p>
+    <p class="accent" style="font-size:.9em; font-weight:800; margin-top:.2rem;">"Find the heaviest model — and optimize it."</p>
+  </section>
+
+  <!-- ===================== SLIDE 2 — PROBLEM ===================== -->
+  <section>
+    <span class="kicker">the problem</span>
+    <h2>Pipeline blew the SLA. <span class="accent">~60 min.</span></h2>
+    <p class="muted" style="font-size:.55em;">Instinct: sort models by runtime, kill the tallest bar.</p>
+    <div class="bars">
+      <div class="bar hot" style="height:300px;"><b>12 min</b><i>fct_engagement</i></div>
+      <div class="bar" style="height:150px;"><b>6</b><i>int_sessions</i></div>
+      <div class="bar" style="height:120px;"><b>5</b><i>stg_events</i></div>
+      <div class="bar" style="height:90px;"><b>4</b><i>dim_users</i></div>
+      <div class="bar" style="height:70px;"><b>3</b><i>fct_plays</i></div>
+      <div class="bar" style="height:50px;"><b>2</b><i>…200 more</i></div>
+    </div>
+    <p style="font-size:.62em; margin-top:2.4rem;">"There's our villain." → <span class="accent">fct_engagement</span></p>
+  </section>
+
+  <!-- ===================== SLIDE 3 — WHAT WE DID / WHY IT FLOPPED ===================== -->
+  <section>
+    <span class="kicker">what we did — and why it flopped</span>
+    <h2>Days of work on the <span class="accent">tallest bar</span>…</h2>
+    <p style="font-size:.72em; margin-top:.3rem;">
+      fct_engagement <b>12 → 6 min</b> &nbsp;➜&nbsp; total pipeline <b style="color:var(--crit)">60 → 58 min</b> &nbsp;😖
+    </p>
+
+    <svg viewBox="0 0 820 250" style="width:90%; margin-top:.6rem;">
+      <defs>
+        <pattern id="hatch" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <rect width="9" height="9" fill="#1b2027"/>
+          <line x1="0" y1="0" x2="0" y2="9" stroke="#39424e" stroke-width="4"/>
+        </pattern>
+      </defs>
+
+      <!-- track A: critical path -->
+      <text x="196" y="66" text-anchor="end" fill="#8b97a7" font-size="15">the real chain</text>
+      <rect x="210" y="44" width="480" height="36" rx="7" fill="#35507a"/>
+      <text x="450" y="67" text-anchor="middle" fill="#cdd7e3" font-size="14">runs the entire 60 min →</text>
+
+      <!-- track B: fct_engagement -->
+      <text x="196" y="132" text-anchor="end" fill="#8b97a7" font-size="15">fct_engagement</text>
+      <rect x="210" y="110" width="160" height="36" rx="7" fill="var(--dbt)"/>
+      <text x="290" y="133" text-anchor="middle" fill="#0d1117" font-size="14" font-weight="800">runs</text>
+      <rect x="370" y="110" width="320" height="36" rx="7" fill="url(#hatch)"/>
+      <text x="530" y="133" text-anchor="middle" fill="#8b97a7" font-size="14">done early — then just waits ⏳</text>
+
+      <!-- axis -->
+      <line x1="210" y1="176" x2="690" y2="176" stroke="#3a434f" stroke-width="2"/>
+      <g fill="#5b6675" font-size="12" text-anchor="middle">
+        <text x="210" y="196">0</text><text x="370" y="196">20</text><text x="530" y="196">40</text><text x="690" y="196">60 min</text>
+      </g>
+
+      <text x="450" y="232" text-anchor="middle" fill="#FF4D4D" font-size="17" font-weight="800">
+        Faster model → longer wait. The total never budges.
+      </text>
+    </svg>
+  </section>
+
+  <!-- ===================== SLIDE 4 — ENLIGHTENMENT (static) ===================== -->
+  <section>
+    <span class="kicker">the enlightenment</span>
+    <h2>Rank by <span style="color:var(--crit)">cumulative</span> cost, not model time.</h2>
+
+    <div class="cols" style="margin-top:.9rem; align-items:stretch;">
+      <div class="card" style="border-color:var(--crit);">
+        <div class="lbl" style="color:var(--crit)">✗ what we ranked by</div>
+        <div style="font-size:.8em; font-weight:800; margin:.5rem 0;"><code class="k">cost = model.runtime</code></div>
+        <div class="muted" style="font-size:.46em;">a single model's own time → picks the <b>heaviest</b></div>
+      </div>
+      <div class="card" style="border-color:var(--ok);">
+        <div class="lbl" style="color:var(--ok)">✓ what actually matters</div>
+        <div style="font-size:.8em; font-weight:800; margin:.5rem 0;"><code class="k">cost = model.runtime + max(upstream.cost)</code></div>
+        <div class="muted" style="font-size:.46em;">your runtime + the longest chain feeding you → picks the <b>critical path</b></div>
+      </div>
+    </div>
+
+    <svg viewBox="0 0 860 290" style="width:74%; margin-top:.7rem;">
+      <path class="edge" d="M100 188 L170 200"/>
+      <path class="edge" d="M270 200 H330"/>
+      <path class="edge" d="M430 200 H490"/>
+      <path class="edge" d="M590 200 L688 182"/>
+      <path class="edge" style="stroke:var(--dbt); stroke-dasharray:8 7" d="M240 176 L350 122"/>
+      <path class="edge" style="stroke:var(--dbt); stroke-dasharray:8 7" d="M450 96 Q620 105 700 158"/>
+
+      <path class="edge crit" d="M100 188 L170 200"/>
+      <path class="edge crit" d="M270 200 H330"/>
+      <path class="edge crit" d="M430 200 H490"/>
+      <path class="edge crit" d="M590 200 L688 182"/>
+
+      <g class="node"><circle cx="72" cy="182" r="28" fill="var(--panel)" stroke="#3a434f" stroke-width="2.5"/>
+        <text class="n" x="72" y="187" text-anchor="middle">src</text></g>
+
+      <!-- heaviest model, OFF the critical path -->
+      <g class="node">
+        <rect x="330" y="66" width="120" height="58" rx="12" fill="var(--panel)" stroke="var(--dbt)" stroke-width="3" stroke-dasharray="8 7"/>
+        <text class="n" x="390" y="90" text-anchor="middle">fct_engagement</text>
+        <text class="t" x="390" y="110" text-anchor="middle" style="fill:var(--dbt)">12 min · heaviest</text></g>
+
+      <g class="node"><rect x="170" y="173" width="100" height="54" rx="12" fill="var(--panel)" stroke="var(--crit)" stroke-width="4"/>
+        <text class="n" x="220" y="197" text-anchor="middle">int_sessions</text>
+        <text class="t" x="220" y="216" text-anchor="middle">6 min</text></g>
+      <g class="node"><rect x="330" y="173" width="100" height="54" rx="12" fill="var(--panel)" stroke="var(--crit)" stroke-width="4"/>
+        <text class="n" x="380" y="197" text-anchor="middle">agg_daily</text>
+        <text class="t" x="380" y="216" text-anchor="middle">8 min</text></g>
+      <g class="node"><rect x="490" y="173" width="100" height="54" rx="12" fill="var(--panel)" stroke="var(--crit)" stroke-width="4"/>
+        <text class="n" x="540" y="197" text-anchor="middle">fct_metrics</text>
+        <text class="t" x="540" y="216" text-anchor="middle">10 min</text></g>
+
+      <g class="node"><circle cx="716" cy="176" r="30" fill="var(--panel)" stroke="#3a434f" stroke-width="2.5"/>
+        <text class="n" x="716" y="181" text-anchor="middle">final</text></g>
+
+      <rect x="162" y="165" width="116" height="70" rx="15" fill="none" stroke="var(--crit)" stroke-width="3" opacity=".55"/>
+      <text x="220" y="255" text-anchor="middle" fill="var(--crit)" font-size="14" font-weight="800">⚠ everything waits on this</text>
+    </svg>
+
+    <p style="font-size:.52em; margin-top:.2rem;">
+      The heaviest model (dashed) isn't on the path. The culprit is <em>int_sessions</em>.
+      <span class="muted">Free from dbt: <code class="k">manifest.json</code> + <code class="k">run_results.json</code>.</span>
+    </p>
+  </section>
+
+  <!-- ===================== SLIDE 4b — the payoff ===================== -->
+  <section data-auto-animate>
+    <span class="kicker">the payoff</span>
+    <h2>Optimized <em>one</em> upstream model.</h2>
+    <div class="cols" style="margin-top:1rem;">
+      <div><div class="muted" style="font-size:.5em;">BEFORE</div><div class="huge crit">60<span style="font-size:.35em">min</span></div></div>
+      <div class="arrowbig">➜</div>
+      <div><div class="muted" style="font-size:.5em;">AFTER</div><div class="huge ok">30<span style="font-size:.35em">min</span></div></div>
+    </div>
+    <h2 style="margin-top:1.4rem; color:var(--ok)">−50% total runtime</h2>
+    <p class="muted" style="font-size:.55em;">One model. Because of <em>where it sat in the graph</em>.</p>
+  </section>
+
+  <!-- ===================== SLIDE 5 — TAKEAWAYS ===================== -->
+  <section>
+    <span class="kicker">takeaways</span>
+    <h2>Stop chasing the slowest model.</h2>
+    <ul class="clean" style="margin-top:1rem;">
+      <li>Find the <em>critical path</em>, not the tallest bar.</li>
+      <li>dbt already emits the data — <code class="k">manifest.json</code> + <code class="k">run_results.json</code>, every run.</li>
+      <li>The DAG isn't just lineage — it's a <em>performance model</em>.</li>
+      <li>Position &gt; raw speed. Know not just <em>what's</em> slow, but <em>why</em>.</li>
+    </ul>
+    <div class="stack" style="margin-top:1.6rem;">
+      <div class="chip"><img src="data:image/svg+xml;base64,PHN2ZyByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+ZGJ0PC90aXRsZT48cGF0aCBmaWxsPSIjRkY2OTRBIiBkPSJNMTcuOTAwNCA5LjM3NjNhOC4xNDg4IDguMTQ4OCAwIDAgMC0zLjA0MjEtMy4xMjA2bDEuNzcwOC44Mzg1YTEwLjI4NzQgMTAuMjg3NCAwIDAgMSAzLjc0IDMuMDAwN2wzLjIzNC01LjkyOTVhMi44NTQ2IDIuODU0NiAwIDAgMC0uMDYxMS0yLjk2MDRDMjIuNzU2Ni4wMzcxIDIxLjIxMTItLjM0MDkgMTkuOTc1NC4zMzI3bC01Ljg3NDkgMy4yMTAxYTQuMzYxMiA0LjM2MTIgMCAwIDEtNC4xNzYxIDBMNC4xNzY5LjQwOGEyLjg1NDUgMi44NTQ1IDAgMCAwLTIuOTU5Mi4wNjMyYy0xLjE2NzMuNzg1My0xLjU0NTIgMi4zMy0uODcyMyAzLjU2NTVMMy41NSA5LjkxMDZhNC4zNjEyIDQuMzYxMiAwIDAgMSAwIDQuMTc3MmwtMy4xMjcyIDUuNzQzYTIuODYgMi44NiAwIDAgMCAuMDg1IDIuOTk3NGMuNzk0IDEuMTQzOCAyLjMyMjUgMS41MDU0IDMuNTQ0OC44Mzg1bDYuMDU4MS0zLjMwNDlhMTAuMjg3NyAxMC4yODc3IDAgMCAxLTMuMDA1MS0zLjc0NTRsLS44Mzc0LTEuNzcwOGE4LjE0OCA4LjE0OCAwIDAgMCAzLjEyMDYgMy4wNDIxbDEwLjU4MzIgNS43NzljMS4yMjEzLjY2NiAyLjc0ODEuMzA1NSAzLjU0MjYtLjgzNjNhMi44Njk5IDIuODY5OSAwIDAgMCAuMDc5Ni0zLjAwMThMMTcuOTAwNCA5LjM3NjN6bTMuMzgwMS03LjczNTFjLjYwMjIgMCAxLjA5MDQuNDg4MiAxLjA5MDQgMS4wOTA0cy0uNDg4MiAxLjA5MDQtMS4wOTA0IDEuMDkwNC0xLjA5MDQtLjQ4ODItMS4wOTA0LTEuMDkwNC40ODgyLTEuMDkwNCAxLjA5MDQtMS4wOTA0ek0yLjc0NDIgMy44MjJjLS42MDIyIDAtMS4wOTA0LS40ODgyLTEuMDkwNC0xLjA5MDRzLjQ4ODItMS4wOTA0IDEuMDkwNC0xLjA5MDQgMS4wOTA0LjQ4ODIgMS4wOTA0IDEuMDkwNFMzLjM0NjQgMy44MjIgMi43NDQyIDMuODIyem0wIDE4LjUzNjNjLS42MDIyIDAtMS4wOTA0LS40ODgyLTEuMDkwNC0xLjA5MDQgMC0uNjAyMi40ODgyLTEuMDkwNCAxLjA5MDQtMS4wOTA0czEuMDkwNC40ODgyIDEuMDkwNCAxLjA5MDRjMCAuNjAyMi0uNDg4MiAxLjA5MDQtMS4wOTA0IDEuMDkwNHptMTAuMzU4NS0xMS40NDg5Yy0xLjIwMDgtLjAwMzUtMi4xNzcuOTY3Mi0yLjE4MDUgMi4xNjc5YTIuMTczOCAyLjE3MzggMCAwIDAgLjcwNTIgMS42MDkxYy0xLjQ4NzItLjIwOTEtMi41MjM0LTEuNTg0My0yLjMxNDItMy4wNzE2LjIwOTEtMS40ODcyIDEuNTg0My0yLjUyMzQgMy4wNzE2LTIuMzE0MmEyLjcxOTQgMi43MTk0IDAgMCAxIDIuMzE0MiAyLjMxNDIgMi4xNjIzIDIuMTYyMyAwIDAgMC0xLjU5NjMtLjcwNTR6bTguMTc3OCAxMS40NDg5Yy0uNjAyMiAwLTEuMDkwNC0uNDg4Mi0xLjA5MDQtMS4wOTA0IDAtLjYwMjIuNDg4Mi0xLjA5MDQgMS4wOTA0LTEuMDkwNHMxLjA5MDQuNDg4MiAxLjA5MDQgMS4wOTA0YzAgLjYwMjItLjQ4ODIgMS4wOTA0LTEuMDkwNCAxLjA5MDR6Ii8+PC9zdmc+" alt="dbt"></div>
+      <div class="chip"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48bGluZWFyR3JhZGllbnQgaWQ9InB5dGhvbi1vcmlnaW5hbC1hIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjcwLjI1MiIgeTE9IjEyMzcuNDc2IiB4Mj0iMTcwLjY1OSIgeTI9IjExNTEuMDg5IiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KC41NjMgMCAwIC0uNTY4IC0yOS4yMTUgNzA3LjgxNykiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzVBOUZENCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzMwNjk5OCIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJweXRob24tb3JpZ2luYWwtYiIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIHgxPSIyMDkuNDc0IiB5MT0iMTA5OC44MTEiIHgyPSIxNzMuNjIiIHkyPSIxMTQ5LjUzNyIgZ3JhZGllbnRUcmFuc2Zvcm09Im1hdHJpeCguNTYzIDAgMCAtLjU2OCAtMjkuMjE1IDcwNy44MTcpIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNGRkQ0M0IiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNGRkU4NzMiLz48L2xpbmVhckdyYWRpZW50PjxwYXRoIGZpbGw9InVybCgjcHl0aG9uLW9yaWdpbmFsLWEpIiBkPSJNNjMuMzkxIDEuOTg4Yy00LjIyMi4wMi04LjI1Mi4zNzktMTEuOCAxLjAwNy0xMC40NSAxLjg0Ni0xMi4zNDYgNS43MS0xMi4zNDYgMTIuODM3djkuNDExaDI0LjY5M3YzLjEzN0gyOS45NzdjLTcuMTc2IDAtMTMuNDYgNC4zMTMtMTUuNDI2IDEyLjUyMS0yLjI2OCA5LjQwNS0yLjM2OCAxNS4yNzUgMCAyNS4wOTYgMS43NTUgNy4zMTEgNS45NDcgMTIuNTE5IDEzLjEyNCAxMi41MTloOC40OTFWNjcuMjM0YzAtOC4xNTEgNy4wNTEtMTUuMzQgMTUuNDI2LTE1LjM0aDI0LjY2NWM2Ljg2NiAwIDEyLjM0Ni01LjY1NCAxMi4zNDYtMTIuNTQ4VjE1LjgzM2MwLTYuNjkzLTUuNjQ2LTExLjcyLTEyLjM0Ni0xMi44MzctNC4yNDQtLjcwNi04LjY0NS0xLjAyNy0xMi44NjYtMS4wMDh6TTUwLjAzNyA5LjU1N2MyLjU1IDAgNC42MzQgMi4xMTcgNC42MzQgNC43MjEgMCAyLjU5My0yLjA4MyA0LjY5LTQuNjM0IDQuNjktMi41NiAwLTQuNjMzLTIuMDk3LTQuNjMzLTQuNjktLjAwMS0yLjYwNCAyLjA3My00LjcyMSA0LjYzMy00LjcyMXoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgMTAuMjYpIi8+PHBhdGggZmlsbD0idXJsKCNweXRob24tb3JpZ2luYWwtYikiIGQ9Ik05MS42ODIgMjguMzh2MTAuOTY2YzAgOC41LTcuMjA4IDE1LjY1NS0xNS40MjYgMTUuNjU1SDUxLjU5MWMtNi43NTYgMC0xMi4zNDYgNS43ODMtMTIuMzQ2IDEyLjU0OXYyMy41MTVjMCA2LjY5MSA1LjgxOCAxMC42MjggMTIuMzQ2IDEyLjU0NyA3LjgxNiAyLjI5NyAxNS4zMTIgMi43MTMgMjQuNjY1IDAgNi4yMTYtMS44MDEgMTIuMzQ2LTUuNDIzIDEyLjM0Ni0xMi41NDd2LTkuNDEySDYzLjkzOHYtMy4xMzhoMzcuMDEyYzcuMTc2IDAgOS44NTItNS4wMDUgMTIuMzQ4LTEyLjUxOSAyLjU3OC03LjczNSAyLjQ2Ny0xNS4xNzQgMC0yNS4wOTYtMS43NzQtNy4xNDUtNS4xNjEtMTIuNTIxLTEyLjM0OC0xMi41MjFoLTkuMjY4ek03Ny44MDkgODcuOTI3YzIuNTYxIDAgNC42MzQgMi4wOTcgNC42MzQgNC42OTIgMCAyLjYwMi0yLjA3NCA0LjcxOS00LjYzNCA0LjcxOS0yLjU1IDAtNC42MzMtMi4xMTctNC42MzMtNC43MTkgMC0yLjU5NSAyLjA4My00LjY5MiA0LjYzMy00LjY5MnoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAgMTAuMjYpIi8+PHJhZGlhbEdyYWRpZW50IGlkPSJweXRob24tb3JpZ2luYWwtYyIgY3g9IjE4MjUuNjc4IiBjeT0iNDQ0LjQ1IiByPSIyNi43NDMiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMCAtLjI0IC0xLjA1NSAwIDUzMi45NzkgNTU3LjU3NikiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNCOEI4QjgiIHN0b3Atb3BhY2l0eT0iLjQ5OCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzdGN0Y3RiIgc3RvcC1vcGFjaXR5PSIwIi8+PC9yYWRpYWxHcmFkaWVudD48cGF0aCBvcGFjaXR5PSIuNDQ0IiBmaWxsPSJ1cmwoI3B5dGhvbi1vcmlnaW5hbC1jKSIgZD0iTTk3LjMwOSAxMTkuNTk3YzAgMy41NDMtMTQuODE2IDYuNDE2LTMzLjA5MSA2LjQxNi0xOC4yNzYgMC0zMy4wOTItMi44NzMtMzMuMDkyLTYuNDE2IDAtMy41NDQgMTQuODE1LTYuNDE3IDMzLjA5Mi02LjQxNyAxOC4yNzUgMCAzMy4wOTEgMi44NzIgMzMuMDkxIDYuNDE3eiIvPjwvc3ZnPgo=" alt="Python"></div>
+      <div class="chip"><img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiM1QjhERUYiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj4KICAgIDxlbGxpcHNlIGN4PSI1MCIgY3k9IjI0IiByeD0iMzAiIHJ5PSIxMiIvPgogICAgPHBhdGggZD0iTTIwIDI0IFY3NiBhMzAgMTIgMCAwIDAgNjAgMCBWMjQiLz4KICAgIDxwYXRoIGQ9Ik0yMCA0MiBhMzAgMTIgMCAwIDAgNjAgMCIvPgogICAgPHBhdGggZD0iTTIwIDU5IGEzMCAxMiAwIDAgMCA2MCAwIi8+CiAgPC9nPgo8L3N2Zz4K" alt="Data"></div>
+    </div>
+    <p style="font-size:.7em; margin-top:1rem;" class="accent">Thank you 🙏 &nbsp; — questions?</p>
+  </section>
+
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    transition: 'slide',
+    backgroundTransition: 'fade',
+    controls: true,
+    progress: true,
+    slideNumber: 'c/t',
+    plugins: [ RevealNotes ]
+  });
+</script>
+</body>
+</html>
