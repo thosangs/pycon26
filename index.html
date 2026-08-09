@@ -178,20 +178,20 @@
     <span class="kicker">the enlightenment</span>
     <h2>Rank by <span style="color:var(--crit)">cumulative</span> cost, not model time.</h2>
 
-    <div class="cols" style="margin-top:.9rem; align-items:stretch;">
-      <div class="card" style="border-color:var(--crit);">
-        <div class="lbl" style="color:var(--crit)">✗ what we ranked by</div>
-        <div style="font-size:.8em; font-weight:800; margin:.5rem 0;"><code class="k">cost = model.runtime</code></div>
-        <div class="muted" style="font-size:.46em;">a single model's own time → picks the <b>heaviest</b></div>
+    <div class="cols" style="margin-top:.6rem; gap:2rem; align-items:stretch;">
+      <div class="card" style="border-color:var(--crit); padding:.8rem 1rem;">
+        <div class="lbl" style="color:var(--crit); font-size:.34em;">✗ what we ranked by</div>
+        <div style="font-size:.62em; font-weight:800; margin:.35rem 0;"><code class="k">cost = model.runtime</code></div>
+        <div class="muted" style="font-size:.38em;">a single model's own time → picks the <b>heaviest</b></div>
       </div>
-      <div class="card" style="border-color:var(--ok);">
-        <div class="lbl" style="color:var(--ok)">✓ what actually matters</div>
-        <div style="font-size:.8em; font-weight:800; margin:.5rem 0;"><code class="k">cost = model.runtime + max(upstream.cost)</code></div>
-        <div class="muted" style="font-size:.46em;">your runtime + the longest chain feeding you → picks the <b>critical path</b></div>
+      <div class="card" style="border-color:var(--ok); padding:.8rem 1rem;">
+        <div class="lbl" style="color:var(--ok); font-size:.34em;">✓ what actually matters</div>
+        <div style="font-size:.62em; font-weight:800; margin:.35rem 0;"><code class="k">cost = model.runtime + max(upstream.cost)</code></div>
+        <div class="muted" style="font-size:.38em;">your runtime + the longest chain feeding you → picks the <b>critical path</b></div>
       </div>
     </div>
 
-    <svg viewBox="0 0 860 290" style="width:74%; margin-top:.7rem;">
+    <svg viewBox="0 0 860 290" style="width:92%; margin-top:.5rem;">
       <path class="edge" d="M100 188 L170 200"/>
       <path class="edge" d="M270 200 H330"/>
       <path class="edge" d="M430 200 H490"/>
