@@ -244,6 +244,35 @@
     </p>
   </section>
 
+  <!-- ===================== SLIDE 4c — the fix ===================== -->
+  <section>
+    <span class="kicker">the fix — one model: int_sessions</span>
+    <h2>Four changes, all on <span style="color:var(--crit)">the model that mattered</span>.</h2>
+    <div class="cols" style="margin-top:1.3rem; flex-wrap:wrap; gap:1.3rem;">
+      <div class="card" style="width:280px; text-align:center;">
+        <div style="font-size:1.9em">📆</div>
+        <div class="lbl" style="margin-top:.4rem">partition pruning</div>
+        <div class="muted" style="font-size:.48em; margin-top:.35rem">scan only the days you need — not the whole table</div>
+      </div>
+      <div class="card" style="width:280px; text-align:center;">
+        <div style="font-size:1.9em">🧲</div>
+        <div class="lbl" style="margin-top:.4rem">add clustering</div>
+        <div class="muted" style="font-size:.48em; margin-top:.35rem">co-locate related rows so filters read less</div>
+      </div>
+      <div class="card" style="width:280px; text-align:center;">
+        <div style="font-size:1.9em">🔁</div>
+        <div class="lbl" style="margin-top:.4rem">go incremental</div>
+        <div class="muted" style="font-size:.48em; margin-top:.35rem">process only new rows, not a full rebuild</div>
+      </div>
+      <div class="card" style="width:280px; text-align:center;">
+        <div style="font-size:1.9em">✂️</div>
+        <div class="lbl" style="margin-top:.4rem">prune columns</div>
+        <div class="muted" style="font-size:.48em; margin-top:.35rem">select only the columns truly used downstream</div>
+      </div>
+    </div>
+    <p style="font-size:.58em; margin-top:1.4rem;">Nothing exotic — <em>read less, compute less</em>, on the one model everything waits on.</p>
+  </section>
+
   <!-- ===================== SLIDE 4b — the payoff ===================== -->
   <section data-auto-animate>
     <span class="kicker">the payoff</span>
