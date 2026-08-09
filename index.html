@@ -86,15 +86,39 @@
     @media (max-width:700px){ .qr-badge{ width:70px; height:70px; top:12px; left:12px; } }
 
     .deck-footer{ position:fixed; bottom:14px; left:20px; z-index:60;
-      font-size:15px; color:#6b7686; letter-spacing:.02em; }
+      font-size:15px; color:#6b7686; letter-spacing:.02em;
+      display:flex; align-items:center; gap:16px; }
     .deck-footer b{ color:#9aa6b6; font-weight:700; }
-    @media (max-width:700px){ .deck-footer{ font-size:11px; bottom:9px; left:10px; } }
+
+    .timer{ display:inline-flex; align-items:center; gap:6px; }
+    .timer #tmrTime{ font-variant-numeric:tabular-nums; font-weight:800; font-size:17px;
+      color:#9aa6b6; min-width:58px; text-align:right; }
+    .timer.warn #tmrTime{ color:var(--py-yellow); }
+    .timer.over #tmrTime{ color:var(--crit); }
+    .timer.over.blink #tmrTime{ opacity:.35; }
+    .timer button{ background:#1b2027; color:#9aa6b6; border:1px solid #2a313b;
+      border-radius:6px; font-size:12px; line-height:1; padding:5px 7px; cursor:pointer; }
+    .timer button:hover{ color:#fff; border-color:#3a434f; }
+
+    @media (max-width:700px){
+      .deck-footer{ font-size:11px; bottom:9px; left:10px; gap:9px; }
+      .timer #tmrTime{ font-size:12px; min-width:42px; }
+      .timer button{ padding:3px 5px; font-size:10px; }
+    }
   </style>
 </head>
 <body>
 <div class="reveal">
 <div class="qr-badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARcAAAEXAQAAAACvqD15AAAAAnRSTlMAAHaTzTgAAAGuSURBVHja7ZkxbsMwDEWZevDoI/goOZp9NB/FR/CoIbAqflKy0S5UAnTp5xAIgpHhgeT/IkUYn8eSLUSe+Rj1sGxzTvLw+5d8Bf7lP39TGG76+1CG+5QGxVZuxpfeiB7IMMBwLskGhjmn4URmHmBoBzLsYCilhDUPV5Epk+G7edgaI6qbDHv7IQ5DrlLCftjBsOpySUhvg36gLkcZXqG67AJNPr21DEuDhEzlQr3NpAKt4kKGsVreQeySErRBE5ed/TCsywgINO7skNcnMpMMo1GI7VWgZxS1OUYyjEhJKeF7PzRNgdkuKkNdjjKElJijNpXJ+SSfLn+YpNlCd91jNpWhP4zawiYlMDk2fEB1q2Mkw5C3gSyvMrfGeIxey2QY7Yco4Sshb5pCfxj1h6mOGnx+aAxNXMgwFqM76uMuJfboI8Pg7OvHuGazt56+XA56m55QhuK7AHv02XiWDEP+8Nderw4SqcvhWq6Tf9eUzTokdwHv7KQw+yqx137IXUAfw8XRAWbbBbCWO/Owzm0U3sla7u+HeNkN58UQi2bmYY8uN0uDR5/3QzJk/EV8A04i2VkvYbTQAAAAAElFTkSuQmCC" alt="Slides: thosangs.github.io/pycon26"></div>
-<div class="deck-footer"><b>Thosan Seceng</b> · PyCon ID 2026 · Binus</div>
+<div class="deck-footer">
+  <span class="who"><b>Thosan Seceng</b> · PyCon ID 2026 · Binus</span>
+  <span class="timer" id="tmr">
+    <span id="tmrTime">5:00</span>
+    <button id="tmrStart" title="Start / resume">▶</button>
+    <button id="tmrPause" title="Pause">⏸</button>
+    <button id="tmrReset" title="Reset to 5:00">⟲</button>
+  </span>
+</div>
 <div class="slides">
 
   <!-- ===================== SLIDE 1 — BACKGROUND ===================== -->
@@ -324,6 +348,40 @@
     slideNumber: 'c/t',
     plugins: [ RevealNotes ]
   });
+</script>
+<script>
+  // 5-minute talk countdown (manual start / pause / reset), timestamp-based for accuracy
+  (function(){
+    var TOTAL = 5 * 60;            // seconds
+    var remaining = TOTAL, running = false, endAt = 0, iv = null;
+    var timeEl = document.getElementById('tmrTime');
+    var wrap   = document.getElementById('tmr');
+
+    function fmt(s){ var neg = s < 0; s = Math.abs(s);
+      var m = Math.floor(s/60), ss = s % 60;
+      return (neg ? '+' : '') + m + ':' + String(ss).padStart(2,'0'); }
+
+    function render(){
+      timeEl.textContent = fmt(remaining);
+      wrap.classList.toggle('warn', remaining <= 60 && remaining > 0);
+      wrap.classList.toggle('over', remaining <= 0);
+      if (remaining > 0) wrap.classList.remove('blink');       // blink only when over time
+      else wrap.classList.toggle('blink');
+    }
+    function update(){ remaining = Math.round((endAt - Date.now())/1000); render(); }
+    function start(){ if (running) return; running = true;
+      endAt = Date.now() + remaining*1000; iv = setInterval(update, 250); }
+    function pause(){ if (!running) return; running = false;
+      remaining = Math.round((endAt - Date.now())/1000); clearInterval(iv); iv = null;
+      wrap.classList.remove('blink'); }
+    function reset(){ running = false; clearInterval(iv); iv = null;
+      remaining = TOTAL; wrap.classList.remove('blink'); render(); }
+
+    function wire(id, fn){ var b = document.getElementById(id);
+      b.addEventListener('click', function(e){ e.preventDefault(); fn(); this.blur(); }); }
+    wire('tmrStart', start); wire('tmrPause', pause); wire('tmrReset', reset);
+    render();
+  })();
 </script>
 </body>
 </html>
