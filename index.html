@@ -80,10 +80,18 @@
     .node text.n{ fill:var(--ink); font-size:15px; font-weight:700; }
     .node text.t{ fill:var(--muted); font-size:13px; }
     .node.fix text.t{ fill:var(--ok); }
+  
+    .qr-badge{ position:fixed; top:16px; left:16px; z-index:60;
+      background:#fff; padding:5px; border-radius:8px; width:74px; height:74px;
+      box-shadow:0 2px 10px rgba(0,0,0,.35); }
+    .qr-badge img{ display:block; width:100%; height:100%; }
+    @media (max-width:700px){ .qr-badge{ width:54px; height:54px; top:10px; left:10px; } }
   </style>
 </head>
 <body>
-<div class="reveal"><div class="slides">
+<div class="reveal">
+<div class="qr-badge"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQMAAACZOPi8AAAABlBMVEUNERf///+JCV0XAAABFUlEQVR42u2ZwQ7DMAhDrf3/PzO1YKDaofe9ZNLGolxqgR27irelc4J9Qrmu4qrj+l67H72tfzohg3YXNyCKLGsXiEd2xfOnd7l4eGCyOHgsHgk0HjGM0dtg/mgEHh+sviztVenMXsR5UVFpcWm1CBUPP33xaNGIW4WpL8kgeqCRf6n8YYGp+3q4YXh4jHdpkV1GholHym6oLR5YXzSSom4PI0Tsj2getdWvUlS9nZuIDIeZBMkflhY9+RR7/1gmJhZGWP8ysDSPioqH88FJxcrz5hRh/W3b2yU75Pxj5eu+iyjI+dhoypYYcp68yNQzw8VDbVwmLwz6+4bOlAOfr3cGom11wfm65XeGhZyPnff758Tv+gJn+CrCdlO02wAAAABJRU5ErkJggg==" alt="Slides: thosangs.github.io/pycon26"></div>
+<div class="slides">
 
   <!-- ===================== SLIDE 1 — BACKGROUND ===================== -->
   <section data-auto-animate>
